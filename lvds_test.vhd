@@ -122,17 +122,17 @@ begin
       PORT MAP (STDBY => '0', OSC => clkRC, SEDSTDBY => OPEN);
 
 	myPll : pll	port map (CLKI=>clkExtOsc, CLKOP=> clkPLL);
-	Inst_debounce: debounce PORT MAP( clk => clkPLL, button => sw(0), result => swDebounced(0) );	
-	Inst_debounc2: debounce PORT MAP( clk => clkPLL, button => sw(2), result => swDebounced(2) );		
+	--Inst_debounce: debounce PORT MAP( clk => clkPLL, button => sw(0), result => swDebounced(0) );	
+	--Inst_debounc2: debounce PORT MAP( clk => clkPLL, button => sw(2), result => swDebounced(2) );		
 
 	led(2 downto 0) <= sw(2 downto 0);
-	led(3) <= swDebounced(0);
-	led(4) <= swDebounced(2);
+	--led(3) <= swDebounced(0);
+	--led(4) <= swDebounced(2);
 				  
 	ledOut <= not led;
 	
-	clkOut <= CLK_DIV(8);
-	led(5) <= CLK_DIV(8);
+	--clkOut <= CLK_DIV(8);
+	--led(5) <= CLK_DIV(8);
 	
 	--led <= std_logic_vector( to_unsigned(gbarpos, 8) );
 	
@@ -181,9 +181,9 @@ begin
 	process (clk) is
 	begin
 	
-		if rising_edge(clk) then
-			CLK_DIV <= CLK_DIV + '1';
-		end if;
+		--if rising_edge(clk) then
+		--	CLK_DIV <= CLK_DIV + '1';
+		--end if;
 		
 		if rising_edge(clk) then
 		
@@ -207,7 +207,7 @@ begin
 					red <= "111111";
 				else 
 					--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
-					--	red <= "111111";
+						--red <= "111111";
 					--else
 						red <= "000000";
 					--end if;
