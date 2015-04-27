@@ -63,7 +63,7 @@ architecture Behavioral of sync_test is
 	constant hactive : integer := 960; -- display size 1920/2
 	signal hcurrent : integer range 0 to htotal := 0;
 	constant vtotal : integer := 1226; -- screen size, with back porch 1200+26
-	constant vfront : integer := 3; -- front porch
+	constant vfront : integer := 3; -- front porch 3 
 	constant vactive : integer := 1200; -- display size
 	signal vcurrent : integer range 0 to vtotal := 0;
 	
@@ -122,10 +122,10 @@ begin
       PORT MAP (STDBY => '0', OSC => clkRC, SEDSTDBY => OPEN);
 
 	myPll : pll	port map (CLKI=>clkExtOsc, CLKOP=> clkPLL);
-	--Inst_debounce: debounce PORT MAP( clk => clkPLL, button => sw(0), result => swDebounced(0) );	
-	--Inst_debounc2: debounce PORT MAP( clk => clkPLL, button => sw(2), result => swDebounced(2) );		
+	Inst_debounce: debounce PORT MAP( clk => clkExtOsc, button => sw(0), result => swDebounced(0) );	
+	Inst_debounc2: debounce PORT MAP( clk => clkExtOsc, button => sw(1), result => swDebounced(1) );		
 
-	led(2 downto 0) <= sw(2 downto 0);
+	--led(2 downto 0) <= sw(2 downto 0);
 	--led(3) <= swDebounced(0);
 	--led(4) <= swDebounced(2);
 				  
@@ -134,7 +134,7 @@ begin
 	--clkOut <= CLK_DIV(8);
 	--led(5) <= CLK_DIV(8);
 	
-	--led <= std_logic_vector( to_unsigned(gbarpos, 8) );
+	led <= std_logic_vector( to_unsigned(gbarpos, 8) );
 	
 	
 	-- data enable: should be high when the data is valid for display
@@ -148,11 +148,11 @@ begin
 
 	-- RX1DATA is (blue[1:0], green[5:1])
 	RX1DATA(0 to 1) <= blue(1 downto 0);-- when dataenable else "00";
-	RX1DATA(2 to 6) <= green(5 downto 1);-- when dataenable else "00000";
+	RX1DATA(2 to 6) <= green(5 downto 1);--  when dataenable else "00000";
 
 	-- RX1DATA is (green[0], red[5:0])
-	RX0DATA(0) <= green(0) ;--when dataenable else '0';
-	RX0DATA(1 to 6) <= red(5 downto 0);-- when dataenable else "000000";
+	RX0DATA(0) <= green(0);--  when dataenable else '0';
+	RX0DATA(1 to 6) <= red(5 downto 0);--  when dataenable else "000000";
 
 -- RX2DATA synchro data
 
@@ -203,23 +203,28 @@ begin
 			-- this is the last slot, wrap around
 			slot <= 0;
 			
-				if (hcurrent > 200 and hcurrent < 500) or (hcurrent > 800 and hcurrent < 1200) then -- 
+				if (hcurrent > gbarpos and hcurrent < (gbarpos + 64)) then -- or (hcurrent > 800 and hcurrent < 1200) then -- 
 					red <= "111111";
+					--red <= std_logic_vector( to_unsigned(hcurrent - gbarpos, 6) );
 				else 
-					--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
-						--red <= "111111";
-					--else
-						red <= "000000";
-					--end if;
+					if hcurrent > 500 and hcurrent < 525 and vcurrent > 100 and vcurrent < 150 then
+						red <= "111111";
+					else
+						if hcurrent = 100 and vcurrent = 100 then
+							red <= "111111";
+						else
+							red <= "000000";
+						end if;
+					end if;
 				end if;
 				
 				
 				
-				if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
-					blue <= "000000";
-				else
-					blue <= "000000";
-				end if;
+				--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
+					--blue <= "000011";
+				--else
+					--blue <= "000000";
+				--end if;
 			
 			-- if this is the last pixel in the line, wrap around
 			if hcurrent = htotal then
@@ -253,19 +258,19 @@ begin
 				if vcurrent = vtotal then
 					vcurrent <= 0;
 					
-					--if swDebounced(0) then
-						--gbarpos <= gbarpos + 1;
-					--end if;
-					
-					--if swDebounced(1) then
-						--gbarpos <= gbarpos - 1;
-					--end if;
-					
-					gbarpos <= gbarpos + 1;
-					
-					if gbarpos = vtotal then
-						gbarpos <= 0;
+					if swDebounced(0) = '1' then
+						gbarpos <= gbarpos + 1;
 					end if;
+					
+					if swDebounced(1) = '1' then
+						gbarpos <= gbarpos - 1;
+					end if;
+					
+					--gbarpos <= gbarpos + 2;
+					
+					--if gbarpos >= vtotal then
+						--gbarpos <= 0;
+					--end if;
 					
 					-- new screen, reset the colors
 					--red <= "111000";
