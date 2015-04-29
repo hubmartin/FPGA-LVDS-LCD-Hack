@@ -8,26 +8,24 @@ use IEEE.NUMERIC_STD.ALL;
 
 --use work.fontRom.all;
 
--- jdouci ppl nastaveni
---"51.730000";
- --attribute FREQUENCY_PIN_CLKI of PLLInst_0 : label is "14.780000";
-
 entity sync_test is
      Port (     clkExtOsc : in STD_LOGIC;
 				ledOut : out STD_LOGIC_VECTOR(7 downto 0);
                 sw : in STD_LOGIC_VECTOR (2 downto 0);
                 
+				-- ODD columns
 			   CK1IN : out  STD_LOGIC;
 			   RXIN2 : out  STD_LOGIC;
 			   RXIN1 : out  STD_LOGIC;
 			   RXIN0 : out  STD_LOGIC;
 			   
+			   -- Even columns
 			   ECK1IN : out  STD_LOGIC;
 			   ERXIN2 : out  STD_LOGIC;
 			   ERXIN1 : out  STD_LOGIC;
 			   ERXIN0 : out  STD_LOGIC;
 			   
-			   
+			   -- Logic analyzer debug outputs
 			   LCK1IN : out  STD_LOGIC;
 			   LRXIN2 : out  STD_LOGIC;
 			   LRXIN1 : out  STD_LOGIC;
@@ -113,8 +111,9 @@ architecture Behavioral of sync_test is
 	 signal swDebounced : STD_LOGIC_VECTOR (2 downto 0);
 begin
 
+	-- Clock multiplexer
 	I1: DCMA
-	port map (CLK0 => clkRC,	CLK1 => clkPLL,	SEL => '1',	DCMOUT => clk);
+	port map (CLK0 => clkRC, CLK1 => clkPLL,	SEL => '1',	DCMOUT => clk);
 
    --internal oscillator
    OSCInst0: OSCH

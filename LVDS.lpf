@@ -38,3 +38,5 @@ LOCATE COMP "LRXIN2" SITE "115" ;
 LOCATE COMP "LTRIG" SITE "114" ;
 LOCATE COMP "LTRIG2" SITE "113" ;
 USE PRIMARY NET "clk" ;
+USE DIN TRUE CELL "Inst_debounce/flipflops_i0" ;
+USE DIN TRUE CELL "Inst_debounc2/flipflops_i0" ;
