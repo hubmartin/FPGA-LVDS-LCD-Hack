@@ -78,6 +78,13 @@ architecture Behavioral of sync_test is
 	signal gbarpos : integer range 0 to vtotal := 0;
 	
 	--signal color_cur : integer range 0 to 2 := 0;
+	
+	-- parameterized module component declaration
+component ROM
+    port (Address: in  std_logic_vector(3 downto 0); 
+        OutClock: in  std_logic; OutClockEn: in  std_logic; 
+        Reset: in  std_logic; Q: out  std_logic_vector(7 downto 0));
+end component;
 		
 	component pll
 		port (CLKI: in  std_logic; CLKOP: out  std_logic);
@@ -109,11 +116,21 @@ architecture Behavioral of sync_test is
    SIGNAL  clkPLL  : STD_LOGIC;
 
 	 signal swDebounced : STD_LOGIC_VECTOR (2 downto 0);
+	 
+	 signal romAddr : STD_LOGIC_VECTOR (3 downto 0) := "0000";
+	 signal romOut : STD_LOGIC_VECTOR (7 downto 0);
+	 signal tempRomAddr : STD_LOGIC_VECTOR (9 downto 0);
 begin
 
+MyROM : ROM
+    port map (Address(3 downto 0)=> romAddr, OutClock=>clkPLL, OutClockEn=>'1', 
+        Reset=> '0', Q(7 downto 0)=> romOut);
+
 	-- Clock multiplexer
-	I1: DCMA
-	port map (CLK0 => clkRC, CLK1 => clkPLL,	SEL => '1',	DCMOUT => clk);
+	--I1: DCMA
+	--port map (CLK0 => clkRC, CLK1 => clkPLL,	SEL => '1',	DCMOUT => clk);
+
+	
 
    --internal oscillator
    OSCInst0: OSCH
@@ -121,6 +138,9 @@ begin
       PORT MAP (STDBY => '0', OSC => clkRC, SEDSTDBY => OPEN);
 
 	myPll : pll	port map (CLKI=>clkExtOsc, CLKOP=> clkPLL);
+	
+	clk <= clkPLL;
+	
 	Inst_debounce: debounce PORT MAP( clk => clkExtOsc, button => sw(0), result => swDebounced(0) );	
 	Inst_debounc2: debounce PORT MAP( clk => clkExtOsc, button => sw(1), result => swDebounced(1) );		
 
@@ -178,6 +198,7 @@ begin
 	
 	
 	process (clk) is
+	
 	begin
 	
 		--if rising_edge(clk) then
@@ -201,26 +222,46 @@ begin
 		if slot = 6 then
 			-- this is the last slot, wrap around
 			slot <= 0;
+			green <= "000000";
+			red <= "000000";
+			blue <= "000000";
 			
-				if (hcurrent > gbarpos and hcurrent < (gbarpos + 64)) then -- or (hcurrent > 800 and hcurrent < 1200) then -- 
-					red <= "111111";
-					--red <= std_logic_vector( to_unsigned(hcurrent - gbarpos, 6) );
-				else 
-					if hcurrent > 500 and hcurrent < 525 and vcurrent > 100 and vcurrent < 150 then
-						red <= "111111";
-					else
-						if hcurrent = 100 and vcurrent = 100 then
-							red <= "111111";
-						else
-							red <= "000000";
-						end if;
-					end if;
+				--if (hcurrent > gbarpos and hcurrent < (gbarpos + 64)) then
+					--red <= "111111";
+				--else 
+					--if hcurrent > 500 and hcurrent < 525 and vcurrent > 100 and vcurrent < 150 then
+						--red <= "111111";
+					--else
+						--if hcurrent = 100 and vcurrent = 100 then
+							--red <= "111111";
+						--else
+							--red <= "000000";
+						--end if;
+					--end if;
+				--end if;
+				
+				tempRomAddr <= std_logic_vector( to_unsigned(vcurrent, 10) );
+				
+				--romAddr <= tempRomAddr(3 downto 0);
+				
+				if (hcurrent > 200 and hcurrent < 250) then
+					red <= tempRomAddr(6 downto 1); --romOut(7 downto 2);
 				end if;
+				
+				if (hcurrent > 300 and hcurrent < 350) then
+					green <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
+				end if;
+
+				--if (hcurrent > 400 and hcurrent < 450) then
+					--blue <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
+				--end if;
+				
+				
 				
 				
 				
 				--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
-					--blue <= "000011";
+					--blue <= "111111";
 				--else
 					--blue <= "000000";
 				--end if;
@@ -229,13 +270,10 @@ begin
 			if hcurrent = htotal then
 				hcurrent <= 0;
 				
+								
 				if vcurrent = gbarpos then
 					green <= "111111";
-				else
-					green <= "000000";
 				end if;
-				
-
 				
 				--if blue = "000000" then
 					--blue <= "111000";
