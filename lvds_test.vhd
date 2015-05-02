@@ -46,6 +46,10 @@ architecture Behavioral of sync_test is
 	signal red : std_logic_vector(5 downto 0) := "000000";
 	signal green : std_logic_vector(5 downto 0) := "000000";
 	signal blue : std_logic_vector(5 downto 0) := "000000";
+	
+	signal tempRed : std_logic_vector(5 downto 0) := "000000";
+	signal tempGreen : std_logic_vector(5 downto 0) := "000000";
+	signal tempBlue  : std_logic_vector(5 downto 0) := "000000";
 
 	-- which slot are we in right now?
 	signal slot : integer range 0 to 6;
@@ -78,6 +82,12 @@ architecture Behavioral of sync_test is
 	signal gbarpos : integer range 0 to vtotal := 0;
 	
 	--signal color_cur : integer range 0 to 2 := 0;
+	
+	
+	subtype subCharacterItem is integer range 0 to 1200;
+type typeCharArray is array (integer range 0 to 3) of subCharacterItem;
+--CONSTANT characterArray:  typeCharArray := (
+shared variable segmentOffsetX:  typeCharArray := (20, 230, 500, 710);
 	
 	-- parameterized module component declaration
 component ROM
@@ -120,6 +130,8 @@ end component;
 	 signal romAddr : STD_LOGIC_VECTOR (3 downto 0) := "0000";
 	 signal romOut : STD_LOGIC_VECTOR (7 downto 0);
 	 signal tempRomAddr : STD_LOGIC_VECTOR (9 downto 0);
+	 signal tempGbarPos : STD_LOGIC_VECTOR (9 downto 0);
+	 signal tempFlag : STD_LOGIC_VECTOR (9 downto 0);
 begin
 
 MyROM : ROM
@@ -197,6 +209,74 @@ MyROM : ROM
 	LTRIG2 <= hsync;
 	
 	
+	process (slot) is
+		variable offsetX : integer range 0 to 1200;
+	begin
+		if (slot = 0) then
+			tempRed<= "000000";
+			tempGreen <= "000000";
+			tempBlue <= "000000";
+		
+			for I in 0 to 3 loop
+		
+				offsetX := segmentOffsetX(I);
+			
+				if(hcurrent > 0 + offsetX and hcurrent < 50 + offsetX) then
+				
+						--red <= "111111";
+						-- top left segment
+						if(vcurrent > 100 and vcurrent < 500) then
+							tempRed <= "111111";
+						end if;
+					
+						-- bottom left segment
+						if(vcurrent > 600 and vcurrent < 1000) then
+							tempRed <= "001111";
+						end if;
+						
+				end if;
+				
+				
+				if(hcurrent > 150 + offsetX and hcurrent < 200 + offsetX) then
+				
+						--red <= "111111";
+						-- top left segment
+						if(vcurrent > 100 and vcurrent < 500) then
+							tempGreen <= "111111";
+						end if;
+					
+						-- bottom left segment
+						if(vcurrent > 600 and vcurrent < 1000) then
+							tempGreen <= "001111";
+						end if;
+						
+				end if;
+				
+				-- vodorovne segmenty top > bottom
+				if(hcurrent > 50 + offsetX and hcurrent < 150 + offsetX) then
+				
+						-- top 
+						if(vcurrent > 50 and vcurrent < 150) then
+							tempBlue <= "111111";
+						end if;
+					
+						-- middle
+						if(vcurrent > 500 and vcurrent < 600) then
+							tempBlue <= "001111";
+						end if;
+						-- bottom
+						if(vcurrent > 1000 and vcurrent < 1100) then
+							tempBlue <= "000111";
+						end if;
+						
+				end if;
+				
+			end loop;
+		
+		end if;
+	end process;
+	
+	
 	process (clk) is
 	
 	begin
@@ -219,12 +299,16 @@ MyROM : ROM
 			vsync <= '1';
 		end if;
 		
+		--if slot = 1 then
+			--tempFlag(0) <= '0';
+		--end if;
+		
 		if slot = 6 then
 			-- this is the last slot, wrap around
 			slot <= 0;
-			green <= "000000";
-			red <= "000000";
-			blue <= "000000";
+			green <= tempGreen;
+			red <= tempRed;
+			blue <= tempBlue;
 			
 				--if (hcurrent > gbarpos and hcurrent < (gbarpos + 64)) then
 					--red <= "111111";
@@ -240,24 +324,57 @@ MyROM : ROM
 					--end if;
 				--end if;
 				
-				tempRomAddr <= std_logic_vector( to_unsigned(vcurrent, 10) );
+				--tempGbarPos <= std_logic_vector( to_unsigned(gbarpos, 10) );
+				
+				--tempRomAddr <= std_logic_vector( to_unsigned(vcurrent, 10) );
+				
+				--tempRomAddr <= tempRomAddr + tempGbarPos;
 				
 				--romAddr <= tempRomAddr(3 downto 0);
 				
-				if (hcurrent > 200 and hcurrent < 250) then
-					red <= tempRomAddr(6 downto 1); --romOut(7 downto 2);
-				end if;
+				--if (hcurrent > 200 and hcurrent < 250) then
+					--red <= tempRomAddr(6 downto 1); --romOut(7 downto 2);
+				--end if;
 				
-				if (hcurrent > 300 and hcurrent < 350) then
-					green <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
-				end if;
+				--if (hcurrent > 300 and hcurrent < 350) then
+					--green <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
+				--end if;
 
 				--if (hcurrent > 400 and hcurrent < 450) then
 					--blue <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
 				--end if;
 				
+				--  
+				--     a
+				--  f     b
+				--     g
+				--  e     c
+				--     d
 				
 				
+				--if(hcurrent > 100 and hcurrent < 150) then
+					--red <= "111111";
+					-- top left segment
+					--if(vcurrent > 100 and vcurrent < 500) then
+						--red <= "111111";
+					--end if;
+				
+					-- bottom left segment
+					--if(vcurrent > 600 and vcurrent < 1000) then
+						--red <= "111111";
+					--end if;
+					
+				--end if;
+				
+				--if tempFlag(0) = '1' then
+					--red <= "111111";
+				--end if;
+				
+				--for I in 1 to 5 loop
+					--if (hcurrent > (I * 64) and hcurrent < (I * 64 + 16)) then
+						--red <= "111111";
+					--end if;
+				--end loop;
 				
 				
 				--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
