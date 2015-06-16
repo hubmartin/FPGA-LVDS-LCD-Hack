@@ -47,9 +47,7 @@ architecture Behavioral of sync_test is
 	signal green : std_logic_vector(5 downto 0) := "000000";
 	signal blue : std_logic_vector(5 downto 0) := "000000";
 	
-	signal tempRed : std_logic_vector(5 downto 0) := "000000";
-	signal tempGreen : std_logic_vector(5 downto 0) := "000000";
-	signal tempBlue  : std_logic_vector(5 downto 0) := "000000";
+	signal nextColor : std_logic_vector(17 downto 0) := "000000000000000000";
 
 	-- which slot are we in right now?
 	signal slot : integer range 0 to 6;
@@ -89,6 +87,33 @@ type typeCharArray is array (integer range 0 to 3) of subCharacterItem;
 --CONSTANT characterArray:  typeCharArray := (
 shared variable segmentOffsetX:  typeCharArray := (20, 230, 500, 710);
 	
+	
+-- 7 segment decoder array	
+--subtype subSevenSegType is std_logic_vector(6 downto 0);
+--type typeSevenSeg is array (integer range 0 to 9) of subSevenSegType;
+--shared variable sevenSegment:  typeSevenSeg := ("0000001","1001111","0010010","0000110","1001100","0100100","0100000","0001111","0000000","0000100");
+
+
+-- Color output from every segment
+subtype subColorOutType is std_logic_vector(17 downto 0);
+type typeColorOut is array (integer range 0 to 3) of subColorOutType;
+shared variable colorOut:  typeColorOut;
+
+
+
+
+-- array of 4 number on display
+subtype subDisplayNumberType is integer range 0 to 9;
+type typeDisplayNumber is array (integer range 0 to 3) of subDisplayNumberType;
+shared variable displayNumber:  typeDisplayNumber := (0,8,3,0);
+
+
+-- divider 200MHz to 1 second
+	signal clockMinute: STD_LOGIC;
+	signal clockSecond: STD_LOGIC;
+	signal counterMinute : integer range 0 to 8000000*61 := 0;
+	signal counterSecond : integer range 0 to 8000000+1 := 0;
+
 	-- parameterized module component declaration
 component ROM
     port (Address: in  std_logic_vector(3 downto 0); 
@@ -103,6 +128,11 @@ end component;
 	COMPONENT debounce
 		PORT( clk : IN std_logic; button : IN std_logic; result : OUT std_logic );
 	END COMPONENT;
+	
+	COMPONENT digit7seg
+		PORT( hcurrent : IN integer; vcurrent : IN integer; offsetX : IN integer; offsetY : IN integer; dispNumber : IN integer; display : OUT std_logic ; colorIn : in std_logic_vector(17 downto 0); colorOut : out std_logic_vector(17 downto 0));
+	END COMPONENT;
+	
 	
 		-- Clock multiplexer
 	component DCMA
@@ -132,6 +162,8 @@ end component;
 	 signal tempRomAddr : STD_LOGIC_VECTOR (9 downto 0);
 	 signal tempGbarPos : STD_LOGIC_VECTOR (9 downto 0);
 	 signal tempFlag : STD_LOGIC_VECTOR (9 downto 0);
+	 
+	 signal digitDisplay : std_logic_vector(3 downto 0);
 begin
 
 MyROM : ROM
@@ -156,6 +188,11 @@ MyROM : ROM
 	Inst_debounce: debounce PORT MAP( clk => clkExtOsc, button => sw(0), result => swDebounced(0) );	
 	Inst_debounc2: debounce PORT MAP( clk => clkExtOsc, button => sw(1), result => swDebounced(1) );		
 
+	digit0: digit7seg PORT MAP(vcurrent => vcurrent, hcurrent => hcurrent, offsetX => 20 , offsetY => 50, dispNumber => displayNumber(0), display => digitDisplay(0), colorIn => "100000111111000000", colorOut => colorOut(0));
+	digit1: digit7seg PORT MAP(vcurrent => vcurrent, hcurrent => hcurrent, offsetX => 230, offsetY => 50, dispNumber => displayNumber(1), display => digitDisplay(1), colorIn => "000000111111100000", colorOut => colorOut(1));
+	digit2: digit7seg PORT MAP(vcurrent => vcurrent, hcurrent => hcurrent, offsetX => 500, offsetY => 50, dispNumber => displayNumber(2), display => digitDisplay(2), colorIn => "100000111111100000", colorOut => colorOut(2));
+	digit3: digit7seg PORT MAP(vcurrent => vcurrent, hcurrent => hcurrent, offsetX => 710, offsetY => 50, dispNumber => displayNumber(3), display => digitDisplay(3), colorIn => "000000111111000000", colorOut => colorOut(3));
+
 	--led(2 downto 0) <= sw(2 downto 0);
 	--led(3) <= swDebounced(0);
 	--led(4) <= swDebounced(2);
@@ -165,7 +202,7 @@ MyROM : ROM
 	--clkOut <= CLK_DIV(8);
 	--led(5) <= CLK_DIV(8);
 	
-	led <= std_logic_vector( to_unsigned(gbarpos, 8) );
+	--led <= std_logic_vector( to_unsigned(gbarpos, 8) );
 	
 	
 	-- data enable: should be high when the data is valid for display
@@ -209,81 +246,114 @@ MyROM : ROM
 	LTRIG2 <= hsync;
 	
 	
+	
+	led(0) <= clockSecond;
+	led(1) <= clockMinute;
+	
+	
 	process (slot) is
 		variable offsetX : integer range 0 to 1200;
+		variable digitValue : std_logic_vector(6 downto 0);
+		variable actColor : std_logic_vector(17 downto 0);
+		
+
 	begin
-		if (slot = 0) then
-			tempRed<= "000000";
-			tempGreen <= "000000";
-			tempBlue <= "000000";
-		
-			for I in 0 to 3 loop
-		
-				offsetX := segmentOffsetX(I);
+		if (slot = 5) then
+			nextColor <= "000000000000000000";
 			
-				if(hcurrent > 0 + offsetX and hcurrent < 50 + offsetX) then
-				
-						--red <= "111111";
-						-- top left segment
-						if(vcurrent > 100 and vcurrent < 500) then
-							tempRed <= "111111";
-						end if;
-					
-						-- bottom left segment
-						if(vcurrent > 600 and vcurrent < 1000) then
-							tempRed <= "001111";
-						end if;
-						
+			if vcurrent = gbarpos then
+					nextColor <= "000000111111000000";
+			end if;
+			
+			actColor := "000000111111000000";
+			
+			--nextColor <= colorOut(0) OR colorOut(1) OR colorOut(2) OR colorOut(3);
+	
+			if( not (digitDisplay = "0000") ) then
+				nextColor <= actColor;
+				--nextColor <= colorOut(0) OR colorOut(1) OR colorOut(2) OR colorOut(3);
+			end if;
+		
+		end if;
+		
+	end process;
+	
+	
+	process (clkExtOsc, sw(0)) is
+	begin
+	
+		if( sw(0) = '1' ) then
+			counterMinute <= 0;
+			counterSecond <= 0;
+			clockSecond <= '0';
+			clockMinute <= '0';
+		else
+	
+			if rising_edge(clkExtOsc) then
+				if (counterMinute = 8000000*60) then
+					clockMinute <= NOT(clockMinute);
+					counterMinute <= 0;
+				else
+					counterMinute <= counterMinute + 1;
 				end if;
 				
-				
-				if(hcurrent > 150 + offsetX and hcurrent < 200 + offsetX) then
-				
-						--red <= "111111";
-						-- top left segment
-						if(vcurrent > 100 and vcurrent < 500) then
-							tempGreen <= "111111";
-						end if;
-					
-						-- bottom left segment
-						if(vcurrent > 600 and vcurrent < 1000) then
-							tempGreen <= "001111";
-						end if;
-						
+				if (counterSecond = 8000000) then
+					clockSecond <= NOT(clockSecond);
+					counterSecond <= 0;
+				else
+					counterSecond <= counterSecond + 1;
 				end if;
-				
-				-- vodorovne segmenty top > bottom
-				if(hcurrent > 50 + offsetX and hcurrent < 150 + offsetX) then
-				
-						-- top 
-						if(vcurrent > 50 and vcurrent < 150) then
-							tempBlue <= "111111";
-						end if;
-					
-						-- middle
-						if(vcurrent > 500 and vcurrent < 600) then
-							tempBlue <= "001111";
-						end if;
-						-- bottom
-						if(vcurrent > 1000 and vcurrent < 1100) then
-							tempBlue <= "000111";
-						end if;
-						
-				end if;
-				
-			end loop;
+			end if;
+		
 		
 		end if;
 	end process;
 	
 	
-	process (clk) is
-	
+	process (clockMinute, sw(0)) is
 	begin
 	
-		--if rising_edge(clk) then
-		--	CLK_DIV <= CLK_DIV + '1';
-		--end if;
+				if( sw(0) = '1' ) then
+						displayNumber(0) := 0;						
+						displayNumber(1) := 8;
+						displayNumber(2) := 3;						
+						displayNumber(3) := 0;		
+			else
+			
+		if rising_edge(clockMinute) then
+		
+
+		
+			if( displayNumber(3) = 0 ) then -- minuty
+				if( displayNumber(2) = 0 ) then -- desitky minut
+					if( displayNumber(1) = 0 ) then -- hodiny
+					
+					else
+						displayNumber(1) := displayNumber(1)  - 1; --dec hodiny
+						displayNumber(2) := 5;						--desitky minut
+						displayNumber(3) := 9;						--minuty
+					end if;
+				else
+					-- sub minuty
+					displayNumber(3) := 9;
+					displayNumber(2) := displayNumber(2)  - 1;
+				end if;
+			else
+				-- sub minuty
+				displayNumber(3) := displayNumber(3)  - 1;
+			end if;
+		
+		end if;
+	
+			
+			end if;
+	
+	end process;
+	
+	
+	process (clk) is
+	begin
+	
 		
 		if rising_edge(clk) then
 		
@@ -299,114 +369,17 @@ MyROM : ROM
 			vsync <= '1';
 		end if;
 		
-		--if slot = 1 then
-			--tempFlag(0) <= '0';
-		--end if;
-		
 		if slot = 6 then
 			-- this is the last slot, wrap around
 			slot <= 0;
-			green <= tempGreen;
-			red <= tempRed;
-			blue <= tempBlue;
-			
-				--if (hcurrent > gbarpos and hcurrent < (gbarpos + 64)) then
-					--red <= "111111";
-				--else 
-					--if hcurrent > 500 and hcurrent < 525 and vcurrent > 100 and vcurrent < 150 then
-						--red <= "111111";
-					--else
-						--if hcurrent = 100 and vcurrent = 100 then
-							--red <= "111111";
-						--else
-							--red <= "000000";
-						--end if;
-					--end if;
-				--end if;
-				
-				--tempGbarPos <= std_logic_vector( to_unsigned(gbarpos, 10) );
-				
-				--tempRomAddr <= std_logic_vector( to_unsigned(vcurrent, 10) );
-				
-				--tempRomAddr <= tempRomAddr + tempGbarPos;
-				
-				--romAddr <= tempRomAddr(3 downto 0);
-				
-				--if (hcurrent > 200 and hcurrent < 250) then
-					--red <= tempRomAddr(6 downto 1); --romOut(7 downto 2);
-				--end if;
-				
-				--if (hcurrent > 300 and hcurrent < 350) then
-					--green <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
-				--end if;
-
-				--if (hcurrent > 400 and hcurrent < 450) then
-					--blue <= tempRomAddr(5 downto 0); --romOut(7 downto 2);
-				--end if;
-				
-				--  
-				--     a
-				--  f     b
-				--     g
-				--  e     c
-				--     d
-				
-				
-				--if(hcurrent > 100 and hcurrent < 150) then
-					--red <= "111111";
-					-- top left segment
-					--if(vcurrent > 100 and vcurrent < 500) then
-						--red <= "111111";
-					--end if;
-				
-					-- bottom left segment
-					--if(vcurrent > 600 and vcurrent < 1000) then
-						--red <= "111111";
-					--end if;
-					
-				--end if;
-				
-				--if tempFlag(0) = '1' then
-					--red <= "111111";
-				--end if;
-				
-				--for I in 1 to 5 loop
-					--if (hcurrent > (I * 64) and hcurrent < (I * 64 + 16)) then
-						--red <= "111111";
-					--end if;
-				--end loop;
-				
-				
-				--if hcurrent > 100 and hcurrent < 150 and vcurrent > 100 and vcurrent < 150 then
-					--blue <= "111111";
-				--else
-					--blue <= "000000";
-				--end if;
+			green <= nextColor(17 downto 12);
+			red <= nextColor(11 downto 6);
+			blue <= nextColor(5 downto 0);
 			
 			-- if this is the last pixel in the line, wrap around
 			if hcurrent = htotal then
 				hcurrent <= 0;
 				
-								
-				if vcurrent = gbarpos then
-					green <= "111111";
-				end if;
-				
-				--if blue = "000000" then
-					--blue <= "111000";
-					--if green = "000000" then
-						--green <= "111000";
-						--if red = "000000" then
-							--red <= "111000";
-						--else
-							--red <= red - 8;
-						--end if;
-					--else
-						--green <= green - 8;
-					--end if;
-				--else
-					--blue <= blue - 8;
-				--end if;
 				
 				-- if this is the last line in the screen, wrap around.
 				if vcurrent = vtotal then
@@ -419,17 +392,7 @@ MyROM : ROM
 					if swDebounced(1) = '1' then
 						gbarpos <= gbarpos - 1;
 					end if;
-					
-					--gbarpos <= gbarpos + 2;
-					
-					--if gbarpos >= vtotal then
-						--gbarpos <= 0;
-					--end if;
-					
-					-- new screen, reset the colors
-					--red <= "111000";
-					--green <= "111000";
-					--blue <= "111000";
+
 				else
 					vcurrent <= vcurrent + 1;
 				end if;
